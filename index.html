@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خدمة الكنيسة 1000 مستخدم</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:15px;background:#0a0a0a;color:#e0e0e0;font-family:'Cairo';font-size:16px}
+h2{text-align:center;color:#4ade80;margin:15px 0}
+.scoreBox{text-align:center;background:#1a1a1a;border:3px solid #fbbf24;border-radius:15px;padding:15px;margin-bottom:15px}
+.scoreBox h3{margin:5px 0;color:#fbbf24;font-size:28px}
+.card{background:#1a1a1a;border:2px solid #4ade80;border-radius:15px;padding:15px;margin-bottom:15px}
+input,select,button{width:100%;padding:14px;margin:8px 0;border:2px solid #4ade80;border-radius:10px;background:#111;color:#e0e0e0;font-size:16px}
+button{background:#4ade80;color:#000;font-weight:bold}
+.hidden{display:none}
+.task{display:flex;justify-content:space-between;align-items:center;padding:14px;margin:8px 0;background:#111;border-radius:12px;border:2px solid #4ade80;font-size:18px}
+.task.done{background:#166534;border-color:#22c55e}
+.task button{width:auto;padding:10px 20px;background:#22c55e;color:white;border:none}
+.logout{text-align:center;margin-top:15px;color:#f87171;cursor:pointer}
+.note{font-size:12px;color:#888;text-align:center}
+.adminBtn{background:#8b5cf6;color:white;margin-top:10px}
+</style>
+</head>
+<body>
+
+<div id="loginBox" class="card">
+<h2>🙏 تسجيل الخدمة</h2>
+<input id="phone" type="tel" placeholder="اكتب رقم موبايلك ودوس دخول" autofocus>
+<button onclick="login()">دخول</button>
+<p class="note">أول مرة هيطلب اسمك وسنك، بعد كده رقمك بس</p>
+</div>
+
+<div id="registerBox" class="card hidden">
+<h2>تسجيل عضو جديد</h2>
+<input id="name" placeholder="الاسم كامل">
+<input id="age" type="number" placeholder="السن">
+<select id="stage">
+<option value="">المرحلة الدراسية</option>
+<option>ابتدائي</option><option>اعدادي</option><option>ثانوي</option>
+<option>جامعي</option><option>خريج</option>
+</select>
+<button onclick="register()">تأكيد التسجيل</button>
+<button onclick="backLogin()" style="background:#555">رجوع</button>
+</div>
+
+<div id="appBox" class="hidden">
+<div class="scoreBox">
+<h3>🏆 نقطك: <span id="totalScore">0</span></h3>
+<p>نقط اليوم: <span id="todayScore">0</span> / 40</p>
+</div>
+
+<h2>أهلاً <span id="userName"></span></h2>
+
+<div class="card">
+<h3>سجل عبادتك - كل مهمة 10 نقط</h3>
+<div id="tasksList"></div>
+</div>
+
+<div class="card">
+<button onclick="resetTasks()" style="background:#f59e0b">تصفير مهام اليوم</button>
+<button class="adminBtn" onclick="showAllUsers()">لوحة الخادم - كل الأعضاء</button>
+</div>
+
+<div class="logout" onclick="logout()">تسجيل خروج</div>
+</div>
+
+<div id="adminBox" class="hidden">
+<h2>كل الأعضاء المسجلين</h2>
+<input id="searchUser" placeholder="ابحث بالاسم أو الرقم" oninput="searchUsers()">
+<div id="usersList" style="max-height:400px;overflow-y:auto"></div>
+<button onclick="backToApp()" style="background:#555;margin-top:10px">رجوع</button>
+<button onclick="exportData()" style="background:#3b82f6">تصدير Backup</button>
+</div>
+
+<script>
+const tasks = ['القداس', 'التسبحة', 'الصوم', 'الصلاة'];
+const POINTS = 10;
+let currentPhone = null;
+let tempPhone = null;
+
+function getAllUsers(){
+  return JSON.parse(localStorage.getItem('kenisaAllUsers') || '{}');
+}
+function saveAllUsers(users){
+  localStorage.setItem('kenisaAllUsers', JSON.stringify(users));
+}
+function getToday(){ return new Date().toDateString(); }
+
+window.login = function(){
+  let phone = document.getElementById('phone').value.trim();
+  if(!phone){ alert('اكتب رقم الموبايل'); return; }
+
+  let users = getAllUsers();
+  if(users[phone]){
+    // عضو قديم
+    currentPhone = phone;
+    let user = users[phone];
+    if(user.lastDate!== getToday()){
+      tasks.forEach(t=> user.tasks[t] = false);
+      user.lastDate = getToday();
+      saveAllUsers(users);
+    }
+    showApp(user);
+  } else {
+    // عضو جديد
+    tempPhone = phone;
+    document.getElementById('loginBox').classList.add('hidden');
+    document.getElementById('registerBox').classList.remove('hidden');
+  }
+}
+
+window.register = function(){
+  let name = document.getElementById('name').value.trim();
+  let age = document.getElementById('age').value;
+  let stage = document.getElementById('stage').value;
+  if(!name ||!age ||!stage){ alert('اكمل البيانات'); return; }
+
+  let users = getAllUsers();
+  users[tempPhone] = {
+    name, age, stage, phone: tempPhone,
+    totalScore: 0, lastDate: getToday(),
+    tasks: {القداس:false, التسبحة:false, الصوم:false, الصلاة:false}
+  };
+  saveAllUsers(users);
+  currentPhone = tempPhone;
+  showApp(users[tempPhone]);
+}
+
+function showApp(user){
+  document.getElementById('loginBox').classList.add('hidden');
+  document.getElementById('registerBox').classList.add('hidden');
+  document.getElementById('adminBox').classList.add('hidden');
+  document.getElementById('appBox').classList.remove('hidden');
+
+  document.getElementById('userName').innerText = user.name;
+  document.getElementById('totalScore').innerText = user.totalScore;
+
+  let todayScore = 0;
+  let html = '';
+  tasks.forEach(t=>{
+    let done = user.tasks[t];
+    if(done) todayScore += POINTS;
+    html += `<div class="task ${done?'done':''}">
+      <span>${t} +${POINTS}</span>
+      <button onclick="markDone('${t}')" ${done?'disabled':''}>${done?'تم ✓':'تم'}</button>
+    </div>`;
+  });
+  document.getElementById('tasksList').innerHTML = html;
+  document.getElementById('todayScore').innerText = todayScore;
+}
+
+window.markDone = function(task){
+  let users = getAllUsers();
+  let user = users[currentPhone];
+  if(user.tasks[task]) return;
+
+  user.tasks[task] = true;
+  user.totalScore += POINTS;
+  saveAllUsers(users);
+  showApp(user);
+}
+
+window.resetTasks = function(){
+  if(confirm('تصفر مهام اليوم؟ نقطك الكلية هتفضل')){
+    let users = getAllUsers();
+    tasks.forEach(t=> users[currentPhone].tasks[t] = false);
+    users[currentPhone].lastDate = getToday();
+    saveAllUsers(users);
+    showApp(users[currentPhone]);
+  }
+}
+
+window.showAllUsers = function(){
+  document.getElementById('appBox').classList.add('hidden');
+  document.getElementById('adminBox').classList.remove('hidden');
+  searchUsers();
+}
+
+window.searchUsers = function(){
+  let q = document.getElementById('searchUser').value.toLowerCase();
+  let users = getAllUsers();
+  let html = '';
+  Object.values(users).filter(u=>
+    u.name.toLowerCase().includes(q) || u.phone.includes(q)
+  ).sort((a,b)=> b.totalScore - a.totalScore)
+ .forEach((u,i)=>{
+    html += `<div style="padding:10px;margin:5px 0;background:#222;border-radius:8px">
+      ${i+1}. ${u.name} - ${u.phone}<br>
+      <small>النقط: ${u.totalScore} | ${u.stage}</small>
+    </div>`;
+  });
+  document.getElementById('usersList').innerHTML = html || 'مفيش نتايج';
+}
+
+window.exportData = function(){
+  let data = JSON.stringify(getAllUsers());
+  let blob = new Blob([data], {type:'application/json'});
+  let url = URL.createObjectURL(blob);
+  let a = document.createElement('a');
+  a.href = url; a.download = 'backup_kenisa_' + getToday() + '.json';
+  a.click();
+  alert('تم تصدير Backup. ابعته واتساب لنفسك عشان لو الموبايل باظ');
+}
+
+window.backToApp = function(){
+  let users = getAllUsers();
+  showApp(users[currentPhone]);
+}
+window.backLogin = function(){
+  document.getElementById('registerBox').classList.add('hidden');
+  document.getElementById('loginBox').classList.remove('hidden');
+}
+window.logout = function(){
+  currentPhone = null;
+  document.getElementById('appBox').classList.add('hidden');
+  document.getElementById('loginBox').classList.remove('hidden');
+  document.getElementById('phone').value = '';
+}
+</script>
+</body>
+</html>
