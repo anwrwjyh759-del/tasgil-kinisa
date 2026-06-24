@@ -47,7 +47,7 @@ button{background:#4ade80;color:#000;font-weight:bold}
 <div id="appBox" class="hidden">
 <div class="scoreBox">
 <h3>🏆 نقطك: <span id="totalScore">0</span></h3>
-<p>نقط اليوم: <span id="todayScore">0</span> / 40</p>
+<p>نقط اليوم: <span id="todayScore">0</span> / 80</p>
 </div>
 
 <h2>أهلاً <span id="userName"></span></h2>
@@ -74,7 +74,7 @@ button{background:#4ade80;color:#000;font-weight:bold}
 </div>
 
 <script>
-const tasks = ['القداس', 'التسبحة', 'الصوم', 'الصلاة'];
+const tasks = ['القداس', 'التسبحة', 'الصوم', 'الصلاة', 'الكتاب المقدس', 'صلاة يسوع', 'سماع عظة', 'حضور الخدمة'];
 const POINTS = 10;
 let currentPhone = null;
 let tempPhone = null;
@@ -93,7 +93,6 @@ window.login = function(){
 
   let users = getAllUsers();
   if(users[phone]){
-    // عضو قديم
     currentPhone = phone;
     let user = users[phone];
     if(user.lastDate!== getToday()){
@@ -103,7 +102,6 @@ window.login = function(){
     }
     showApp(user);
   } else {
-    // عضو جديد
     tempPhone = phone;
     document.getElementById('loginBox').classList.add('hidden');
     document.getElementById('registerBox').classList.remove('hidden');
@@ -117,10 +115,13 @@ window.register = function(){
   if(!name ||!age ||!stage){ alert('اكمل البيانات'); return; }
 
   let users = getAllUsers();
+  let userTasks = {};
+  tasks.forEach(t=> userTasks[t] = false);
+
   users[tempPhone] = {
     name, age, stage, phone: tempPhone,
     totalScore: 0, lastDate: getToday(),
-    tasks: {القداس:false, التسبحة:false, الصوم:false, الصلاة:false}
+    tasks: userTasks
   };
   saveAllUsers(users);
   currentPhone = tempPhone;
@@ -184,7 +185,7 @@ window.searchUsers = function(){
   Object.values(users).filter(u=>
     u.name.toLowerCase().includes(q) || u.phone.includes(q)
   ).sort((a,b)=> b.totalScore - a.totalScore)
- .forEach((u,i)=>{
+.forEach((u,i)=>{
     html += `<div style="padding:10px;margin:5px 0;background:#222;border-radius:8px">
       ${i+1}. ${u.name} - ${u.phone}<br>
       <small>النقط: ${u.totalScore} | ${u.stage}</small>
